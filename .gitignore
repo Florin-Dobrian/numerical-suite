@@ -1,0 +1,17 @@
+gitignore# Executables
+*.exe
+*.out
+*.app
+*.bin
+
+# PDF and images
+*.pdf
+*.png
+
+# PyCharm
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
