@@ -15,6 +15,7 @@ dependencies = [
     "pyarrow>=23.0.1",
     "pyspark>=4.1.1",
     "scipy>=1.17.0",
+    "scipy-stubs>=1.17.1.0",
     "xgboost>=3.2.0",
 ]
 
