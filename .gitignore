@@ -17,3 +17,9 @@ __pycache__/
 *.pyo
 .DS_Store
 **/.DS_Store
+
+# generated intermediates
+methods/code/*.json
+
+# but the method figures are documentation, not output
+!methods/figs/*.png
