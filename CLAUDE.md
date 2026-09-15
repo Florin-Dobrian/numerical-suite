@@ -97,6 +97,10 @@ Consistent across the three documents. Reuse these; do not invent alternatives.
 | $\rho$ | cost of one implicit solve divided by one explicit step |
 | $S$ | safety factor on a stability limit, 0.8–0.9 |
 | $p$, $q$ | order in time, order in space |
+| $i$, $j$ | structured-grid indices: $i$ with $x$, $j$ with $y$. In a mesh-shaped display $i$ therefore runs across the **columns** — the transpose of matrix convention. Say so wherever an array is laid out on the mesh |
+| $\mathbf{A}$ | the discrete operator of a steady problem, $\mathbf{A}\mathbf{T} \approx -\nabla^2 T$. Related to $\mathbf{L}$ but not the same: $\mathbf{L}$ is the method-of-lines right-hand side, so it carries the opposite sign |
+| $A_e$ | area of one element. **Subscripted**, so it cannot be read as the system matrix $\mathbf{A}$ set in italic |
+| $I$, $J$ | global degree-of-freedom index: the flattened node or cell number, as in $K_{IJ}$, $F_I$. **Not $p$** — that is the order of accuracy. Capital, so it cannot be read as a grid index |
 
 ---
 

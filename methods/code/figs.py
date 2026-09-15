@@ -32,13 +32,16 @@ for i in range(n + 1):
 for i in range(n + 1):
     for j in range(n + 1):
         interior = 0 < i < n and 0 < j < n
-        a.plot(i * h, j * h, "o", ms=7 if interior else 5,
+        a.plot(i * h, j * h, "o", ms=13 if interior else 5,
                color=BLU if interior else "white",
                mec=BLU, mew=1.2, zorder=3)
+        if interior:                       # dof index, ordered as in disc.py
+            a.text(i * h, j * h, str((j - 1) * (n - 1) + (i - 1)), color="white",
+                   fontsize=6.5, ha="center", va="center", zorder=5)
 # highlight the stencil
 ci = cj = 2
 for di, dj in ((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)):
-    a.plot((ci + di) * h, (cj + dj) * h, "o", ms=11, mfc="none", mec=RED, mew=1.6, zorder=4)
+    a.plot((ci + di) * h, (cj + dj) * h, "o", ms=18, mfc="none", mec=RED, mew=1.6, zorder=4)
 a.plot([(ci - 1) * h, (ci + 1) * h], [cj * h, cj * h], color=RED, lw=1.4, zorder=2)
 a.plot([ci * h, ci * h], [(cj - 1) * h, (cj + 1) * h], color=RED, lw=1.4, zorder=2)
 a.set_title("Finite difference\nunknowns at nodes  •  9 interior dof", color=BLU)
@@ -48,7 +51,9 @@ a = ax[1]
 for i in range(n):
     for j in range(n):
         a.add_patch(Rectangle((i * h, j * h), h, h, fc="none", ec=GRY, lw=0.6, zorder=1))
-        a.plot((i + .5) * h, (j + .5) * h, "s", ms=6, color=ORA, zorder=3)
+        a.plot((i + .5) * h, (j + .5) * h, "s", ms=14, color=ORA, zorder=3)
+        a.text((i + .5) * h, (j + .5) * h, str(j * n + i), color="white",
+               fontsize=6.5, ha="center", va="center", zorder=5)
 ci = cj = 1
 a.add_patch(Rectangle((ci * h, cj * h), h, h, fc=ORA, alpha=0.16, ec=ORA, lw=1.8, zorder=2))
 for (dx, dy, ang) in ((h, .5 * h, 0), (0, .5 * h, 180), (.5 * h, h, 90), (.5 * h, 0, 270)):
@@ -68,21 +73,24 @@ for i in range(n):
 for i in range(n + 1):
     for j in range(n + 1):
         interior = 0 < i < n and 0 < j < n
-        a.plot(i * h, j * h, "^", ms=7 if interior else 5,
+        a.plot(i * h, j * h, "^", ms=15 if interior else 5,
                color=GRN if interior else "white", mec=GRN, mew=1.2, zorder=3)
+        if interior:
+            a.text(i * h, j * h - 0.06 * h, str((j - 1) * (n - 1) + (i - 1)), color="white",
+                   fontsize=6.5, ha="center", va="center", zorder=5)
 ci = cj = 2
-patch = [(ci * h, cj * h), ((ci + 1) * h, cj * h), ((ci + 1) * h, (cj + 1) * h),
-         (ci * h, (cj + 1) * h), ((ci - 1) * h, cj * h), ((ci - 1) * h, (cj - 1) * h),
-         (ci * h, (cj - 1) * h)]
-a.add_patch(Polygon([(ci * h, cj * h), ((ci + 1) * h, cj * h), ((ci + 1) * h, (cj + 1) * h),
-                     (ci * h, (cj + 1) * h), ((ci - 1) * h, cj * h),
-                     ((ci - 1) * h, (cj - 1) * h), (ci * h, (cj - 1) * h)],
-                    fc=GRN, alpha=0.15, ec=RED, lw=1.6, zorder=2))
+# the six triangles meeting at the centre node: E, NE, N, W, SW, S.
+# the centre itself is interior to the patch and is not a boundary vertex.
+patch = [((ci + 1) * h, cj * h), ((ci + 1) * h, (cj + 1) * h), (ci * h, (cj + 1) * h),
+         ((ci - 1) * h, cj * h), ((ci - 1) * h, (cj - 1) * h), (ci * h, (cj - 1) * h)]
+a.add_patch(Polygon(patch, fc=GRN, alpha=0.15, zorder=2))
+a.add_patch(Polygon(patch, fc="none", ec=RED, lw=1.6, zorder=4))
 a.set_title("Finite element (P1)\nunknowns at nodes  •  9 interior dof", color=GRN)
 
 fig.suptitle("The same 4 x 4 discretization of the unit square, three ways", y=1.0)
 fig.text(0.5, -0.03, "red: the support of one equation — a stencil, a control volume, "
-                     "an element patch", ha="center", color=RED, fontsize=8.5)
+                     "an element patch.\nNumbers are the unknown ordering used in section 2, "
+                     "i running fastest", ha="center", color=RED, fontsize=8.5)
 fig.tight_layout()
 fig.savefig(f"{OUT}/fig1_three_meshes.png", bbox_inches="tight")
 plt.close(fig)

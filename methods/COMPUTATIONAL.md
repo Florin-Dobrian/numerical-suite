@@ -59,11 +59,92 @@ For a second-order scalar PDE in two variables,
 
 $$A\,\phi_{xx} + B\,\phi_{xy} + C\,\phi_{yy} + \text{lower order} = 0$$
 
-the classification is by the discriminant $B^2 - 4AC$: negative is elliptic, zero parabolic, positive hyperbolic. This is correct, it is what every textbook opens with, and it is close to useless in practice — most systems of interest are first-order systems of several equations, not one second-order scalar equation.
+the classification is by the discriminant $B^2 - 4AC$: negative is elliptic, zero parabolic, positive hyperbolic.
+
+**Two things about that statement are usually left implicit and both cause confusion.**
+
+**The two variables are not necessarily $x$ and $y$.** They are whichever two independent variables the equation has. For the heat and wave equations in one space dimension they are $x$ and $t$ — **time is not privileged in the classification, it is simply a coordinate.** The whole of the difference between the three canonical equations lies in what occupies the slot where $t$ appears.
+
+**Only the second-order terms count.** They are the **principal part**; every first-order and zeroth-order term is invisible to the classification. So the $\phi_t$ of the heat equation contributes nothing to $A$, $B$ or $C$.
+
+With those two points, the three canonical equations classify themselves:
+
+| | read as $A, B, C$ | $B^2 - 4AC$ | |
+|---|---|---|---|
+| **Heat**, $\phi_t = \alpha\phi_{xx}$ | $A = \alpha$, $B = 0$, $C = 0$ | $0 - 0 = 0$ | **parabolic** |
+| **Wave**, $\phi_{tt} = c^2\phi_{xx}$ | $A = c^2$, $B = 0$, $C = -1$ | $0 + 4c^2 > 0$ | **hyperbolic** |
+| **Laplace**, $\phi_{xx} + \phi_{yy} = 0$ | $A = 1$, $B = 0$, $C = 1$ | $0 - 4 < 0$ | **elliptic** |
+
+The heat equation has $C = 0$ because there is no $\phi_{tt}$ term at all, and $C = 0$ with $B = 0$ forces the discriminant to zero. **Parabolic is the degenerate case**: the quadratic form is rank-deficient, missing a direction entirely, and the missing direction is supplied by a first-order derivative instead.
+
+### More than two variables: the eigenvalue form
+
+The discriminant is the two-variable shadow of a general rule. Collect the second-order coefficients of
+
+$$\sum_{i,j} a_{ij}\,\frac{\partial^2\phi}{\partial x_i \partial x_j} + \text{lower order} = 0$$
+
+into the symmetric matrix $\mathbf{a}$ and read the **signs of its eigenvalues**:
+
+- all nonzero and of the **same sign** → elliptic
+- all nonzero with **one of opposite sign** → hyperbolic
+- **one eigenvalue zero**, with a first-order derivative supplying that direction → parabolic
+
+In two space dimensions plus time, ordering the variables $(x, y, t)$, the three equations differ only in the last slot:
+
+| | $\mathbf{a}$ | eigenvalues | |
+|---|---|---|---|
+| **Laplace** $\phi_{xx} + \phi_{yy} = 0$ | $\operatorname{diag}(1, 1)$ | $+,\,+$ | elliptic |
+| **Heat** $\phi_t = \alpha(\phi_{xx} + \phi_{yy})$ | $\operatorname{diag}(\alpha, \alpha, 0)$ | $+,\,+,\,0$ | parabolic |
+| **Wave** $\phi_{tt} = c^2(\phi_{xx} + \phi_{yy})$ | $\operatorname{diag}(c^2, c^2, -1)$ | $+,\,+,\,-$ | hyperbolic |
+
+All three carry $\phi_{xx}$ and $\phi_{yy}$ identically. **What separates them is what sits in the $t$ slot: nothing, a zero, or a $-1.**
+
+**The discriminant is this test in disguise.** For two variables $\mathbf{a} = \begin{pmatrix} A & B/2 \\ B/2 & C\end{pmatrix}$, whose determinant is $AC - B^2/4$, so
+
+$$B^2 - 4AC = -4\det\mathbf{a}$$
+
+A negative discriminant is a positive determinant is two eigenvalues of like sign — elliptic. Zero discriminant is a singular matrix — parabolic. Positive is opposite signs — hyperbolic. One rule; the discriminant is its special case.
+
+**The names are borrowed from conic sections.** $Ax^2 + Bxy + Cy^2 = 1$ is an ellipse, a parabola or a hyperbola by the identical discriminant. The classification was named for the shape of the quadratic form long before anyone asked what it implied about solutions.
+
+### What the signature implies
+
+The eigenvalue signature determines the **characteristics** — the directions along which information travels — and that is where the classification stops being bookkeeping.
+
+Mixed signs give **real characteristics**: a cone in space–time, finite propagation speed, a bounded domain of dependence, and initial data that can be marched forward. Like signs give **no real characteristics at all**, so every point depends on every other simultaneously — a boundary value problem solved in one shot, which is why an elliptic problem has no timestep and why a single linear solve produces the entire field. The degenerate parabolic case has its characteristic surface at $t = \text{constant}$: one-directional in time like a hyperbolic problem, but with infinite propagation speed like an elliptic one. That combination is exactly why explicit schemes for diffusion carry a $\Delta t \lesssim \Delta x^2$ restriction rather than $\Delta t \lesssim \Delta x$, as §0.4 and `TIME_INTEGRATION.md` §0 work out.
+
+### Why time is never the elliptic direction
+
+The pattern in those tables is worth naming. For the heat and wave equations the classification turns on **time against space**; for Laplace it turns on **space against space**. There is no everyday equation that is elliptic in a time direction, and that is not an accident of which problems happen to be interesting.
+
+**Such equations exist and are perfectly well defined.** $\phi_{tt} + \phi_{xx} = 0$ is Laplace's equation with $t$ as one of its coordinates. Nothing forbids writing it. What breaks is asking it to march from initial data.
+
+**Hadamard's example shows exactly what breaks.** Look for $\phi = \sin(nx)f(t)$. Then $\phi_{xx} = -n^2\sin(nx)f$, so the equation requires $f'' = n^2f$, and $f = \sinh(nt)/n^2$ satisfies the initial data
+
+$$\phi(x,0) = 0, \qquad \phi_t(x,0) = \frac{\sin(nx)}{n}$$
+
+That data tends to zero uniformly as $n$ grows — it can be made as small as desired. The solution $\phi = \sin(nx)\sinh(nt)/n^2$ blows up for every $t > 0$, because $\sinh(nt)$ outruns $n^2$. **Arbitrarily small data, arbitrarily large solution.** A solution exists and is unique; what fails is **continuous dependence on the data**, the third of Hadamard's conditions for well-posedness, and the one that matters numerically because it means no amount of mesh refinement helps. Contrast the wave equation, where the same $\sin(nx)$ gives $\cos(nct)$ — bounded for every $n$. **One sign in the principal part is the whole difference**, turning $\sinh$ into $\cos$.
+
+**The physical reading is causality.** Elliptic means every point depends on every other with no preferred direction. Time being elliptic would mean the future determines the past exactly as much as the past determines the future, and that the solution needs conditions at *both* ends of the time interval rather than at the start. There would be no initial-value problem at all. Hyperbolic and parabolic both carry an arrow; elliptic carries none, and time does.
+
+**It is the metric signature, literally.** The wave operator's eigenvalues $(+,+,+,-)$ are the Minkowski signature; all-positive is Euclidean. The **Wick rotation** $t \to it$ converts the wave equation into Laplace's, hyperbolic into elliptic, which is the basis of Euclidean quantum field theory. The classification of PDEs and the causal structure of spacetime are the same statement, and causality is that one minus sign.
+
+**Conditions at both ends of time do appear in practice**, and it is worth knowing which cases are genuine:
+
+| | why time is two-ended | is the equation elliptic in time? |
+|---|---|---|
+| **Periodic steady state** | $\phi(0) = \phi(T)$ replaces initial data; harmonic balance in circuit and turbomachinery simulation solves the period globally rather than marching | no — a boundary condition in time, imposed on a problem that is otherwise parabolic or hyperbolic |
+| **Optimal control, adjoints** | state runs forward, adjoint runs backward from a terminal condition, and the two are coupled | the **combined** system has conditions at both ends and is solved at once; neither half does alone |
+| **Space–time finite elements** | $t$ is discretized as a further coordinate and the whole slab solved together | no — a choice about *solving*, not a property of the problem |
+| **Inverse problems** | the backward heat equation reconstructs the past from the present | no, but it is ill-posed for Hadamard's reason in the other direction: diffusion destroys high-frequency information, so inverting it amplifies noise without bound, and every practical method regularizes |
+
+### Why this is not the whole story
+
+All of the above is complete for a **scalar second-order equation**, and that covers the three canonical cases. It is not what gets used day to day, because most systems of interest are first-order systems of several equations rather than one second-order scalar.
 
 ### The version that gets used
 
-For a first-order system $\partial_t \mathbf{q} + \mathbf{A}(\mathbf{q})\,\partial_x \mathbf{q} = 0$, the character is read off the eigenvalues of the flux Jacobian $\mathbf{A}$:
+For a first-order system $\partial_t \mathbf{q} + \mathbf{A}(\mathbf{q})\,\partial_x \mathbf{q} = 0$, the character is read off the eigenvalues of the **flux Jacobian** $\mathbf{A}$:
 
 | Eigenvalues of $\mathbf{A}$ | Character |
 |---|---|
@@ -73,6 +154,53 @@ For a first-order system $\partial_t \mathbf{q} + \mathbf{A}(\mathbf{q})\,\parti
 | some zero, second-order terms present | **parabolic** |
 
 The eigenvalues *are* the characteristic speeds, which is why this version is useful: it tells you not only the type but the numbers, and those numbers are what set the timestep and the boundary conditions.
+
+**This table and the one in §0.3's eigenvalue form test different matrices, and the elliptic rows read as opposites for that reason.**
+
+| | the matrix | formulation | elliptic means |
+|---|---|---|---|
+| eigenvalue form, above | $\mathbf{a}$, the **second-order coefficients** | one scalar second-order equation | eigenvalues real, all of one sign |
+| this table | $\mathbf{A}$, the **flux Jacobian** | first-order system | eigenvalues complex, none real |
+
+Neither is a special case of the other and both are correct. For Laplace's equation $\mathbf{a} = \operatorname{diag}(1,1)$, as real as a matrix gets. Written instead as the first-order Cauchy–Riemann system $u_x = v_y$, $v_x = -u_y$, the same problem has $\mathbf{A} = \begin{pmatrix}0 & 1\\ -1 & 0\end{pmatrix}$ with eigenvalues $\pm i$. **The two statements agree on what matters:** no real eigenvalues of the flux Jacobian means no real characteristics, and one-signed eigenvalues of the coefficient matrix means the same thing — no direction along which to march. Reach for whichever matrix the formulation in front of you actually has.
+
+### A worked case: the Navier–Stokes equations
+
+The three canonical scalars are the clean illustration; a real system is where the classification earns its keep.
+
+**Type belongs to the coupled system, not to individual equations.** Mass, momentum and energy cannot be classified separately — there is no discriminant to compute for the continuity equation alone, because its character comes entirely from what it is coupled to. What each equation *contributes* is well defined, and that is the useful decomposition:
+
+| | contributes to the principal part | why |
+|---|---|---|
+| **mass** | first-order terms only | there is no viscous or conductive mechanism for mass; nothing makes it second order |
+| **momentum** | second-order, through $\mu\nabla^2\mathbf{u}$ | momentum diffusion |
+| **energy** | second-order, through $\nabla\cdot(k\nabla T)$ | heat conduction, the operator of `DISCRETIZATION.md` §0 |
+
+So the second-order coefficient matrix of the full compressible system is **singular** — a zero block where mass sits. That is the whole of its classification, and it has a name: **incompletely parabolic**. Neither hyperbolic nor properly parabolic, but mixed, the hyperbolic part carried by pressure–velocity coupling and the parabolic part by viscosity and conduction.
+
+| | type | reason |
+|---|---|---|
+| **Compressible Euler**, unsteady | hyperbolic | eigenvalues $u-c,\; u,\; u+c$: real, complete set, finite speeds |
+| **Compressible Navier–Stokes**, unsteady | incompletely parabolic | hyperbolic convection plus parabolic diffusion, singular viscous block |
+| **Incompressible Navier–Stokes**, unsteady | parabolic **and** elliptic together | velocity parabolic; pressure elliptic and instantaneous |
+| **Steady Euler**, subsonic | elliptic | no real characteristics |
+| **Steady Euler**, supersonic | hyperbolic | the Mach cone |
+| **Steady Navier–Stokes** | elliptic | the viscous terms determine the type |
+| **Boundary layer (Prandtl)** | parabolic | streamwise diffusion dropped, so $x$ becomes a marching direction |
+
+**The incompressible case is the structural oddity.** Holding $\rho$ constant turns continuity from an evolution equation into a **constraint**, $\nabla\cdot\mathbf{u} = 0$. There is then no $\partial p/\partial t$ anywhere in the system — **pressure has no evolution equation at all.** It becomes a Lagrange multiplier enforcing the constraint, fixed instantaneously by the elliptic pressure Poisson equation. The system is differential-algebraic, a saddle point rather than an evolution problem, and the acoustic speed has gone to infinity: a disturbance anywhere changes pressure everywhere at once. That is what incompressibility means at the level of the classification, and it is why the pressure solve of `DISCRETIZATION.md` §0.1 exists.
+
+**Reformulation is therefore a design lever, not a cosmetic choice.** Most serious CFD methods are a decision about which type to confront:
+
+| | what it does | what it trades |
+|---|---|---|
+| **Projection / fractional step** | accepts the split: parabolic velocity solve, then elliptic pressure solve | each piece is a type with good methods, at the cost of an elliptic solve every step |
+| **Artificial compressibility** (Chorin) | adds $\partial p/\partial\tau$ to continuity, making the system hyperbolic in pseudo-time | no elliptic solve; pays in pseudo-time iterations to convergence |
+| **Vorticity–streamfunction** | $\nabla^2\psi = -\omega$ plus vorticity transport, eliminating pressure | elegant in 2D; awkward in 3D and at boundaries |
+| **Parabolized Navier–Stokes** | drops streamwise viscous terms in supersonic flow, making $x$ a marching direction | orders of magnitude cheaper; invalid if the flow separates streamwise |
+| **Low-Mach preconditioning** (Turkel) | rescales the eigenvalues $u \pm c$ and $u$, which differ by $1/M$ as $M \to 0$ | deliberately destroys time accuracy to buy steady-state convergence |
+
+**Changing the formulation changes the type, and changing the type changes which algorithms are available.** That is the practical reason the classification is worth knowing: it is not a taxonomy applied after the fact but the thing being manipulated.
 
 ### What each type means
 

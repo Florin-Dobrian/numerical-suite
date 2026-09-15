@@ -48,7 +48,7 @@ def fd_solve(n):
             b[p] = fsrc(i * h, j * h)           # POINT value of f
     u = spla.spsolve(A.tocsr(), b)
     X, Y = np.meshgrid(np.arange(1, n) * h, np.arange(1, n) * h)
-    return u, uex(X, Y).ravel(), h, A.tocsr()
+    return u, uex(X, Y).ravel(), h, A.tocsr(), b
 
 
 # ======================================================================
@@ -90,7 +90,7 @@ def fv_solve(n, kfun=None, face_avg="harmonic"):
     X, Y = np.meshgrid(xc, xc)
     ubar = np.array([[uex_cellavg(i * h, (i + 1) * h, j * h, (j + 1) * h)
                       for i in range(n)] for j in range(n)]).ravel()
-    return u, ubar, h, A.tocsr()
+    return u, ubar, h, A.tocsr(), b
 
 
 def cellavg_f(xl, xr, yl, yr):
@@ -102,7 +102,9 @@ def cellavg_f(xl, xr, yl, yr):
 # ======================================================================
 # 3a. FINITE ELEMENT -- P1 linear triangles, each square split by one diagonal
 # ======================================================================
-def p1_solve(n):
+def p1_solve(n, diagonal="fixed"):
+    """diagonal: "fixed"  every square split SW-NE (the mesh of section 2.3)
+                 "alt"    orientation alternates like a chessboard (section 3.3)"""
     h = 1.0 / n
     nn = (n + 1)**2
     nid = lambda i, j: j * (n + 1) + i
@@ -111,7 +113,11 @@ def p1_solve(n):
     for j in range(n):
         for i in range(n):
             c = [(i, j), (i + 1, j), (i + 1, j + 1), (i, j + 1)]
-            for tri in ([c[0], c[1], c[2]], [c[0], c[2], c[3]]):
+            if diagonal == "fixed" or (i + j) % 2 == 0:
+                tris = ([c[0], c[1], c[2]], [c[0], c[2], c[3]])
+            else:
+                tris = ([c[0], c[1], c[3]], [c[1], c[2], c[3]])
+            for tri in tris:
                 g = [nid(*t) for t in tri]
                 xs = np.array([t[0] * h for t in tri])
                 ys = np.array([t[1] * h for t in tri])
@@ -190,7 +196,7 @@ def _apply_dirichlet_and_solve(A, F, n, h):
     free = np.array(sorted(set(range(nn)) - bnd))
     X = np.array([(p % (n + 1)) * h for p in free])
     Y = np.array([(p // (n + 1)) * h for p in free])
-    return u[free], uex(X, Y), h, Araw
+    return u[free], uex(X, Y), h, Araw, F[free]
 
 
 # ======================================================================
@@ -205,14 +211,97 @@ def order(errs, hs):
 
 
 print("=" * 78)
+print("E0.  The three systems, fully assembled on the 4x4 mesh   (DISCRETIZATION.md 2)")
+print("=" * 78)
+n = 4
+h = 1.0 / n
+print(f"n = {n},  h = {h},  h^2 = {h**2}")
+
+ufd, ufd_ex, _, Afd4, bfd4 = fd_solve(n)
+ufv, ufv_ex, _, Afv4, bfv4 = fv_solve(n)
+up1, up1_ex, _, Kfull, Fp1 = p1_solve(n)
+
+nid = lambda i, j: j * (n + 1) + i
+free = [nid(i, j) for j in range(1, n) for i in range(1, n)]
+Kint = Kfull[np.ix_(free, free)].toarray()
+
+print("\n--- FD: h^2 * A  (9 x 9, interior nodes, i fastest) ---")
+print(Afd4.toarray() * h**2)
+print("\nFD rhs, point values of f:\n", bfd4)
+print("FD rhs * h^2:\n", bfd4 * h**2)
+print("FD solution:\n", ufd)
+print("FD exact   :\n", ufd_ex)
+print(f"FD  L2 {errors(ufd, ufd_ex, h)[0]:.4e}   Linf {errors(ufd, ufd_ex, h)[1]:.4e}")
+
+print("\n--- FVM: balance matrix (16 x 16); already equals h^2 * A ---")
+print(Afv4.toarray())
+print("\nFVM rhs, cell integrals of f:\n", bfv4)
+print("FVM rhs / h^2, cell averages:\n", bfv4 / h**2)
+print("FVM solution :\n", ufv)
+print("FVM exact cell averages:\n", ufv_ex)
+print(f"FVM L2 {errors(ufv, ufv_ex, h)[0]:.4e}   Linf {errors(ufv, ufv_ex, h)[1]:.4e}")
+xc = (np.arange(n) + 0.5) * h
+Xc, Yc = np.meshgrid(xc, xc)
+print("FVM against exact POINT value at the cell centre, Linf:",
+      f"{np.abs(ufv - uex(Xc, Yc).ravel()).max():.3e}")
+
+print("\n--- FEM P1: K on the 9 interior nodes ---")
+print(Kint)
+print("\nFEM load F_i (3-point midside rule, as assembled above):\n", Fp1)
+print("FEM solution:\n", up1)
+print(f"FEM L2 {errors(up1, up1_ex, h)[0]:.4e}   Linf {errors(up1, up1_ex, h)[1]:.4e}")
+
+print("\n--- comparison ---")
+print("max |h^2 A_FD - K_P1| over the whole 9x9 :",
+      np.abs(Afd4.toarray() * h**2 - Kint).max())
+dg = np.diag(Afv4.toarray())
+print("FVM diagonal census (value, count)      :",
+      [(int(d), int((dg == d).sum())) for d in (4, 5, 6)])
+print("FVM interior-cell row, cell (1,1)       :", Afv4.toarray()[1 * n + 1])
+
+print("\nthe three right-hand sides, each divided by h^2:")
+print(f"  FD,  point value of f at (1/2, 1/2)     : {bfd4[4]:.6f}")
+print(f"  FVM, cell average over cell (1,1)       : {(bfv4 / h**2)[5]:.6f}")
+print(f"  FEM, F/h^2 at node (2,2)                : {(Fp1 / h**2)[4]:.6f}")
+print(f"  exact f(1/2, 1/2)                       : {fsrc(0.5, 0.5):.6f}")
+
+print("\nFD amplification 2 pi^2 h^2 / (4 - 4 cos pi h), predicted and measured:")
+for N in (4, 8, 16, 32):
+    hh = 1.0 / N
+    pred = 2 * np.pi**2 * hh**2 / (4 - 4 * np.cos(np.pi * hh))
+    u_, ue_, _, _, _ = fd_solve(N)
+    print(f"  n = {N:3d}   predicted {pred:.9f}   measured {np.max(u_ / ue_):.9f}")
+
+print("\n--- does the triangulation diagonal matter? ---")
+ualt, ualt_ex, _, Kalt, Falt = p1_solve(n, diagonal="alt")
+Kalt_int = Kalt[np.ix_(free, free)].toarray()
+print("max |K_fixed - K_alt| (n=4) :", np.abs(Kint - Kalt_int).max())
+print("max |K_fixed - K_alt| (n=8) :",
+      np.abs(p1_solve(8)[3].toarray() - p1_solve(8, diagonal="alt")[3].toarray()).max())
+print("F, fixed diagonal      :", Fp1)
+print("F, alternating diagonal:", Falt)
+for nm, Fv, uv, ue in (("fixed", Fp1, up1, up1_ex), ("alt", Falt, ualt, ualt_ex)):
+    print(f"  {nm:5s}  |F0-F2|/F0 {abs(Fv[0] - Fv[2]) / Fv[0]:.3e}"
+          f"   |u0-u2|/u0 {abs(uv[0] - uv[2]) / uv[0]:.3e}"
+          f"   Linf {errors(uv, ue, h)[1]:.4e}")
+
+print("\nFVM against the exact point value at cell centres, refinement:")
+for N in (4, 8, 16, 32):
+    u_, _, _, _, _ = fv_solve(N)
+    xcN = (np.arange(N) + 0.5) / N
+    XN, YN = np.meshgrid(xcN, xcN)
+    print(f"  n = {N:3d}   Linf {np.abs(u_ - uex(XN, YN).ravel()).max():.3e}")
+
+print()
+print("=" * 78)
 print("E1.  The interior stencil, on a uniform mesh with constant k")
 print("=" * 78)
 n = 8
 h = 1.0 / n
-_, _, _, Afd = fd_solve(n)
-_, _, _, Afv = fv_solve(n)
-_, _, _, Ap1 = p1_solve(n)
-_, _, _, Aq1 = q1_solve(n)
+_, _, _, Afd, _ = fd_solve(n)
+_, _, _, Afv, _ = fv_solve(n)
+_, _, _, Ap1, _ = p1_solve(n)
+_, _, _, Aq1, _ = q1_solve(n)
 
 # representative interior rows, scaled so each approximates -Laplacian
 def stencil_fd(A, n):
@@ -270,7 +359,7 @@ for name, fn in (("FD  5-point", fd_solve), ("FVM cell-centred", fv_solve),
                  ("FEM P1 triangles", p1_solve), ("FEM Q1 quads", q1_solve)):
     L2, Li, hs, dofs = [], [], [], []
     for n in ns:
-        u, ue, h, _ = fn(n)
+        u, ue, h, _, _ = fn(n)
         a, b = errors(u, ue, h)
         L2.append(a); Li.append(b); hs.append(h); dofs.append(len(u))
     res[name] = (hs, L2, Li, dofs)
